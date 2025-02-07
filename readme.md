@@ -17,7 +17,6 @@ Ensure you have Python 3.7+ installed, then install the required packages:
 ```bash
 pip install -r requirements.txt
 ```
-
 ## Getting Started 🚀
 
 1. Clone this repository:
