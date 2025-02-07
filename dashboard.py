@@ -1,31 +1,15 @@
 import panel as pn
 import folium
-import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from bokeh.palettes import Category10
-
-# City coordinates data
-CITY_COORDS = {
-    'Delhi': [28.6139, 77.2090],
-    'Mumbai': [19.0760, 72.8777],
-    'Bangalore': [12.9716, 77.5946],
-    'Hyderabad': [17.3850, 78.4867],
-    'Chennai': [13.0827, 80.2707],
-    'Kolkata': [22.5726, 88.3639],
-    'Ahmedabad': [23.0225, 72.5714],
-    'Pune': [18.5204, 73.8567],
-    'Jaipur': [26.9124, 75.7873],
-    'Lucknow': [26.8467, 80.9462]
-}
+from delivery_api import DeliveryAPI
 
 # Initialize Panel
 pn.extension('plotly', sizing_mode="stretch_width", notifications=True)
 
-# Load data
-df = pd.read_csv("Fast Delivery Agent Reviews.csv")
-df['Latitude'] = df['Location'].map(lambda x: CITY_COORDS[x][0])
-df['Longitude'] = df['Location'].map(lambda x: CITY_COORDS[x][1])
+# Initialize API
+delivery_api = DeliveryAPI("Fast Delivery Agent Reviews.csv")
 
 # Create title pane
 title = pn.pane.HTML("""
@@ -49,7 +33,7 @@ def create_dashboard_filters():
     return (
         pn.widgets.Select(
             name='📦 Delivery Agent',
-            options=['All'] + list(df['Agent Name'].unique()),
+            options=['All'] + list(delivery_api.data['Agent Name'].unique()),
             value='All',
             sizing_mode='stretch_width',
             styles={
@@ -60,7 +44,7 @@ def create_dashboard_filters():
         ),
         pn.widgets.Select(
             name='📋 Order Type',
-            options=['All'] + list(df['Order Type'].unique()),
+            options=['All'] + list(delivery_api.data['Order Type'].unique()),
             value='All',
             sizing_mode='stretch_width',
             styles={
@@ -104,20 +88,7 @@ def create_analytics_dashboard():
 
 def create_map_pane(agent, order_type):
     """Generate Folium map based on filters and return Panel HTML pane"""
-    # Filter data based on conditions
-    filtered_df = df.copy()
-    if agent != 'All':
-        filtered_df = filtered_df[filtered_df['Agent Name'] == agent]
-    if order_type != 'All':
-        filtered_df = filtered_df[filtered_df['Order Type'] == order_type]
-    
-    # Calculate city statistics
-    city_stats = filtered_df.groupby('Location').agg({
-        'Rating': 'mean',
-        'Latitude': 'first',
-        'Longitude': 'first',
-        'Order Type': 'count'
-    }).reset_index()
+    city_stats = delivery_api.get_city_stats(agent, order_type)
     
     # Create map
     m = folium.Map(
@@ -167,11 +138,7 @@ def create_map_pane(agent, order_type):
 @pn.depends(dashboard_agent_select.param.value, dashboard_order_type_select.param.value)
 def create_main_panel(agent, order_type):
     """Main interface: includes map and order volume pie chart"""
-    filtered_df = df.copy()
-    if agent != 'All':
-        filtered_df = filtered_df[filtered_df['Agent Name'] == agent]
-    if order_type != 'All':
-        filtered_df = filtered_df[filtered_df['Order Type'] == order_type]
+    filtered_df = delivery_api.get_filtered_data(agent, order_type)
     
     controls = pn.Column(
         pn.pane.Markdown('### 🔍 Filters', styles={'font-size': '14px', 'margin-bottom': '2px'}),
@@ -244,11 +211,7 @@ def create_main_panel(agent, order_type):
 @pn.depends(stats_agent_select.param.value, stats_order_type_select.param.value)
 def create_detailed_stats(agent, order_type):
     """Detailed statistics view"""
-    filtered_df = df.copy()
-    if agent != 'All':
-        filtered_df = filtered_df[filtered_df['Agent Name'] == agent]
-    if order_type != 'All':
-        filtered_df = filtered_df[filtered_df['Order Type'] == order_type]
+    filtered_df = delivery_api.get_filtered_data(agent, order_type)
         
     detailed_controls = pn.Column(
         pn.pane.Markdown('### 🔍 Filters', styles={'font-size': '16px'}),
@@ -266,11 +229,7 @@ def create_detailed_stats(agent, order_type):
         }
     )
     
-    order_type_counts = (filtered_df['Order Type']
-                        .value_counts()
-                        .reset_index()
-                        .rename(columns={'index': 'Order Type', 
-                                       'Order Type': 'Count'}))
+    order_type_counts = delivery_api.get_order_type_distribution(agent, order_type)
     
     stats_panel = pn.Column(
         pn.pane.Markdown("### 📊 Detailed Statistics"),
@@ -288,13 +247,8 @@ def create_detailed_stats(agent, order_type):
     )
 
 def create_analytics_charts(agent, order_type):
-    """Generate Plotly pie chart based on filtered data and return Panel Plotly pane"""
-    # Filter data
-    filtered_df = df.copy()
-    if agent != 'All':
-        filtered_df = filtered_df[filtered_df['Agent Name'] == agent]
-    if order_type != 'All':
-        filtered_df = filtered_df[filtered_df['Order Type'] == order_type]
+    """Generate Plotly pie chart based on filtered data"""
+    filtered_df = delivery_api.get_filtered_data(agent, order_type)
     
     fig = make_subplots(
         rows=1, cols=1,
@@ -342,27 +296,13 @@ def create_analytics_charts(agent, order_type):
 
 def create_stat_cards(agent, order_type):
     """Generate top statistics cards"""
-    filtered_df = df.copy()
-    if agent != 'All':
-        filtered_df = filtered_df[filtered_df['Agent Name'] == agent]
-    if order_type != 'All':
-        filtered_df = filtered_df[filtered_df['Order Type'] == order_type]
+    stats = delivery_api.get_top_stats(agent, order_type)
     
-    # Calculate statistics, handle empty data
-    if not filtered_df.empty:
-        top_city = filtered_df.groupby('Location')['Order Type'].count().idxmax()
-        top_city_orders = filtered_df.groupby('Location')['Order Type'].count().max()
-        top_rating_city = filtered_df.groupby('Location')['Rating'].mean().idxmax()
-        top_city_rating = filtered_df.groupby('Location')['Rating'].mean().max()
-    else:
-        top_city, top_city_orders = 'N/A', 0
-        top_rating_city, top_city_rating = 'N/A', 0
-
     cards = pn.Row(
         pn.Column(
             "### 🏆 Top Performing City",
-            f"**{top_city}**",
-            f"{top_city_orders:,} orders",
+            f"**{stats['top_city']}**",
+            f"{stats['top_city_orders']:,} orders",
             styles={
                 'background': '#f0f7ff',
                 'padding': '10px',
@@ -374,8 +314,8 @@ def create_stat_cards(agent, order_type):
         ),
         pn.Column(
             "### ⭐ Highest Rated City",
-            f"**{top_rating_city}**",
-            f"{top_city_rating:.2f}/5 rating",
+            f"**{stats['top_rating_city']}**",
+            f"{stats['top_city_rating']:.2f}/5 rating",
             styles={
                 'background': '#f0f7ff',
                 'padding': '10px',
