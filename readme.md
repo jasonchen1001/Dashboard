@@ -35,7 +35,7 @@ pip install -r requirements.txt
 python dashboard.py
 ```
 
-4. Open the displayed local address in your browser (typically http://localhost:5006)
+4. Open the displayed local address in your browser
 
 ## Data Description 📝
 

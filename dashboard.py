@@ -42,7 +42,7 @@ info_card = pn.pane.Markdown("""
 - 🟡 Yellow: 3.0 ≤ Rating < 4.0
 - 🟢 Green: Rating ≥ 4.0
 - 📍 Marker size proportional to order volume
-""")
+""", styles={'font-size': '12px'})
 
 # Create global filter controls for each tab
 def create_dashboard_filters():
@@ -51,11 +51,10 @@ def create_dashboard_filters():
             name='📦 Delivery Agent',
             options=['All'] + list(df['Agent Name'].unique()),
             value='All',
-            width=240,
             sizing_mode='stretch_width',
             styles={
                 'font-size': '14px',
-                'max-width': '100%',
+                'max-width': '200px',
                 'box-sizing': 'border-box'
             }
         ),
@@ -63,10 +62,10 @@ def create_dashboard_filters():
             name='📋 Order Type',
             options=['All'] + list(df['Order Type'].unique()),
             value='All',
-            width=240,
+            sizing_mode='stretch_width',
             styles={
                 'font-size': '14px',
-                'max-width': '100%',
+                'max-width': '200px',
                 'box-sizing': 'border-box'
             }
         )
@@ -163,7 +162,7 @@ def create_map_pane(agent, order_type):
             tooltip=f"{row['Location']}: {row['Rating']:.1f}/5"
         ).add_to(m)
     
-    return pn.pane.HTML(m._repr_html_(), height=600, sizing_mode='stretch_width')
+    return pn.pane.HTML(m._repr_html_(), sizing_mode='stretch_both')
 
 @pn.depends(dashboard_agent_select.param.value, dashboard_order_type_select.param.value)
 def create_main_panel(agent, order_type):
@@ -175,24 +174,24 @@ def create_main_panel(agent, order_type):
         filtered_df = filtered_df[filtered_df['Order Type'] == order_type]
     
     controls = pn.Column(
-        pn.pane.Markdown('### 🔍 Filters', styles={'font-size': '16px'}),
+        pn.pane.Markdown('### 🔍 Filters', styles={'font-size': '14px', 'margin-bottom': '2px'}),
         dashboard_agent_select,
         dashboard_order_type_select,
         info_card,
         pn.pane.Markdown("""
         ### 📊 Summary Statistics
-        """, styles={'font-size': '16px', 'margin-top': '20px'}),
+        """, styles={'font-size': '12px', 'margin-top': '0px', 'margin-bottom': '0px'}),
         pn.pane.Markdown(f"""
         - **Total Orders:** {len(filtered_df):,}
         - **Average Rating:** {filtered_df['Rating'].mean():.2f}/5
-        - **Cities Covered:** {filtered_df['Location'].nunique()}
         - **Active Agents:** {filtered_df['Agent Name'].nunique()}
         - **Most Common Order Type:** {filtered_df['Order Type'].mode().iloc[0] if not filtered_df.empty else 'N/A'}
-        """),
-        width=280,
-        width_policy='fixed',
-        margin=(40, 20, 0, 0),
+        """, styles={'margin-top': '0px', 'font-size': '12px'}),
+        sizing_mode='stretch_width',
         styles={
+            'flex-basis': '20%',
+            'min-width': '200px',
+            'max-width': '300px',
             'background': '#f0f7ff',
             'padding': '20px',
             'border-radius': '12px',
@@ -209,22 +208,27 @@ def create_main_panel(agent, order_type):
     main_content = pn.Row(
         pn.Column(
             pn.pane.Markdown("### 🗺️ Delivery Service Rating Map", 
-                           styles={'font-size': '18px', 'margin-bottom': '10px'}),
+                           styles={'font-size': '14px', 'margin-bottom': '2px'}),
             map_pane,
-            width=800,
-            height=600,
-            sizing_mode='stretch_width'
+            sizing_mode='stretch_both',
+            styles={
+                'flex-basis': '65%', 
+                'flex-grow': '1',
+                'height': '70vh'
+            }
         ),
         pn.Column(
             pn.pane.Markdown("### 📊 Order Volume Distribution",
-                           styles={'font-size': '18px', 'margin-bottom': '10px', 'text-align': 'center'}),
+                           styles={'font-size': '14px', 'margin-bottom': '2px', 'text-align': 'center'}),
             chart_pane,
-            width=450,
-            height=600,
-            margin=(0, 0, 0, 30),
-            sizing_mode='stretch_width'
+            sizing_mode='stretch_both',
+            styles={
+                'flex-basis': '35%', 
+                'flex-grow': '1',
+                'height': '70vh'
+            }
         ),
-        sizing_mode='stretch_width'
+        sizing_mode='stretch_both'
     )
     
     return pn.Column(
@@ -250,10 +254,11 @@ def create_detailed_stats(agent, order_type):
         pn.pane.Markdown('### 🔍 Filters', styles={'font-size': '16px'}),
         stats_agent_select,
         stats_order_type_select,
-        width=280,
-        width_policy='fixed',
-        margin=(0, 20, 0, 0),
+        sizing_mode='stretch_width',
         styles={
+            'flex-basis': '20%',
+            'min-width': '200px',
+            'max-width': '300px',
             'background': '#f0f7ff',
             'padding': '20px',
             'border-radius': '12px',
@@ -261,12 +266,19 @@ def create_detailed_stats(agent, order_type):
         }
     )
     
+    order_type_counts = (filtered_df['Order Type']
+                        .value_counts()
+                        .reset_index()
+                        .rename(columns={'index': 'Order Type', 
+                                       'Order Type': 'Count'}))
+    
     stats_panel = pn.Column(
         pn.pane.Markdown("### 📊 Detailed Statistics"),
         pn.pane.DataFrame(filtered_df.describe().round(2)),
         pn.pane.Markdown("### 📈 Order Type Distribution"),
-        pn.pane.DataFrame(filtered_df['Order Type'].value_counts().reset_index()),
-        width=800
+        pn.pane.DataFrame(order_type_counts, index=False),  
+        sizing_mode='stretch_width',
+        styles={'flex-basis': '80%'}
     )
     
     return pn.Row(
@@ -314,7 +326,7 @@ def create_analytics_charts(agent, order_type):
     )
     
     fig.update_layout(
-        height=600,
+        height=None,
         showlegend=False,
         margin=dict(l=50, r=30, t=20, b=20),
         plot_bgcolor='white',
@@ -353,10 +365,11 @@ def create_stat_cards(agent, order_type):
             f"{top_city_orders:,} orders",
             styles={
                 'background': '#f0f7ff',
-                'padding': '15px',
+                'padding': '10px',
                 'border-radius': '8px',
                 'text-align': 'center',
-                'box-shadow': '0 2px 4px rgba(0,0,0,0.08)'
+                'box-shadow': '0 2px 4px rgba(0,0,0,0.08)',
+                'font-size': '14px'
             }
         ),
         pn.Column(
@@ -365,10 +378,11 @@ def create_stat_cards(agent, order_type):
             f"{top_city_rating:.2f}/5 rating",
             styles={
                 'background': '#f0f7ff',
-                'padding': '15px',
+                'padding': '10px',
                 'border-radius': '8px',
                 'text-align': 'center',
-                'box-shadow': '0 2px 4px rgba(0,0,0,0.08)'
+                'box-shadow': '0 2px 4px rgba(0,0,0,0.08)',
+                'font-size': '14px'
             }
         ),
         sizing_mode='stretch_width',
@@ -383,13 +397,13 @@ def create_stat_cards(agent, order_type):
 # Modify final layout
 final_dashboard = pn.Column(
     title,
-    create_analytics_dashboard(),  # Use version with tabs
+    create_analytics_dashboard(),
     sizing_mode='stretch_width',
     styles={
         'padding': '1rem',
         'background': 'white',
         'min-height': '95vh',
-        'max-width': '1600px',
+        'max-width': '90vw',
         'margin': '0 auto'
     }
 )
