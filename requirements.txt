@@ -2,3 +2,4 @@ panel
 plotly
 pandas 
 folium
+bokeh
