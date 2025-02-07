@@ -1,6 +1,5 @@
 dashboard_project/
 ├── Fast Delivery Agent Reviews.csv
-├── api.py                 
-├── data_loader.py         
+├── api.py                         
 ├── dashboard.py          
 └── requirements.txt        
