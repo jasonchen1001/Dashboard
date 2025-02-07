@@ -101,7 +101,7 @@ The dashboard uses `Fast Delivery Agent Reviews.csv` which contains:
 - **Pandas**: Data processing and analysis
 - **Bokeh**: Backend visualization engine and color palettes
 
-## Contributing ��
+## Contributing 💡
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
