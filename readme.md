@@ -58,7 +58,6 @@ The dashboard uses `Fast Delivery Agent Reviews.csv` which contains:
 - Folium
 - Plotly
 - Pandas
-- NumPy
 
 ## Author 👨‍💻
 
